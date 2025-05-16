@@ -166,29 +166,15 @@ export class ProductsService {
       const threeMonthsAgo = new Date();
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - months);
 
-      const result = await this.productModel.findAll({
-        attributes: [
-          'product_id',
-          'name',
-          [
-            Sequelize.literal('SUM("orderDetails"."QUANTITY")'),
-            'total_sold'
-          ],
-          [
-            Sequelize.literal('SUM("orderDetails"."QUANTITY" * "orderDetails"."PRICE_PER_UNIT")'),
-            'total_revenue'
-          ]
-        ],
+      const products = await this.productModel.findAll({
         include: [
           {
             model: OrderDetail,
             as: 'orderDetails',
-            attributes: [],
             include: [
               {
                 model: Order,
                 as: 'order',
-                attributes: [],
                 where: {
                   order_date: {
                     [Op.gte]: threeMonthsAgo
@@ -197,17 +183,21 @@ export class ProductsService {
               }
             ]
           }
-        ],
-        group: ['Product.product_id', 'Product.name'],
-        order: [[Sequelize.literal('total_sold'), 'DESC']],
-        limit: 10,
-        subQuery: false
+        ]
       });
 
-      this.logger.log(`Готово! Посчитала статистику для ${result.length} товаров 📊`);
-      return result;
+      const result = products.map(product => ({
+        product_id: product.product_id,
+        name: product.name,
+        total_sold: product.orderDetails.reduce((sum, detail) => sum + detail.quantity, 0),
+        total_revenue: product.orderDetails.reduce((sum, detail) => 
+          sum + (detail.quantity * detail.price_per_unit), 0)
+      }));
+
+      result.sort((a, b) => b.total_sold - a.total_sold);
+      return result.slice(0, 10);
     } catch (error) {
-      this.logger.error(' что-то пошло не так при подсчете статистики:', error);
+      this.logger.error('Что-то пошло не так при подсчете статистики:', error);
       throw error;
     }
   }
@@ -216,29 +206,14 @@ export class ProductsService {
     try {
       this.logger.log('Считаю статистику по складам...');
 
-      const result = await this.productModel.findAll({
-        attributes: [
-          'product_id',
-          'name',
-          'price',
-          [
-            Sequelize.literal('SUM("inventory"."QUANTITY")'),
-            'total_quantity'
-          ],
-          [
-            Sequelize.literal('GROUP_CONCAT("inventory->warehouse"."NAME" || " (" || "inventory"."QUANTITY" || ")", ", ")'),
-            'warehouses'
-          ]
-        ],
+      const products = await this.productModel.findAll({
         include: [
           {
             model: Inventory,
             as: 'inventory',
-            attributes: [],
             include: [
               {
                 model: Warehouse,
-                attributes: [],
                 as: 'warehouse'
               }
             ]
@@ -246,16 +221,29 @@ export class ProductsService {
         ],
         where: {
           is_available: true
-        },
-        group: ['Product.product_id', 'Product.name', 'Product.price'],
-        having: Sequelize.literal('total_quantity > 30 OR total_quantity IS NULL'),
-        order: [['name', 'ASC']]
+        }
       });
 
-      this.logger.log(`Готово! статистика для ${result.length} товаров 📦`);
+      const result = products.map(product => {
+        const totalQuantity = product.inventory.reduce((sum, inv) => sum + inv.quantity, 0);
+        const warehouses = product.inventory.map(inv => 
+          `${inv.warehouse.name} (${inv.quantity})`
+        ).join(', ');
+
+        return {
+          product_id: product.product_id,
+          name: product.name,
+          price: product.price,
+          total_quantity: totalQuantity,
+          warehouses
+        };
+      }).filter(item => item.total_quantity > 30 || !item.total_quantity)
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      this.logger.log(`Готово! Статистика для ${result.length} товаров 📦`);
       return result;
     } catch (error) {
-      this.logger.error(' что-то пошло не так при подсчете статистики по складам:', error);
+      this.logger.error('Что-то пошло не так при подсчете статистики по складам:', error);
       throw error;
     }
   }

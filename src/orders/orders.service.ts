@@ -5,7 +5,6 @@ import { OrderDetail } from '../models/order-detail.model';
 import { Product } from '../models/product.model';
 import { OrderStatus } from '../models/order-status.model';
 import { PaymentMethod } from '../models/payment-method.model';
-import { Sequelize } from 'sequelize';
 
 @Injectable()
 export class OrdersService {
@@ -28,20 +27,7 @@ export class OrdersService {
     try {
       this.logger.log(`Ищу заказы пользователя ${userId}...`);
 
-      const result = await this.orderModel.findAll({
-        attributes: [
-          'order_id',
-          'order_date',
-          'total_price',
-          [
-            Sequelize.literal('COUNT(DISTINCT "orderDetails"."PRODUCT_ID")'),
-            'products_count'
-          ],
-          [
-            Sequelize.literal('GROUP_CONCAT("orderDetails->product"."NAME", ", ")'),
-            'products'
-          ]
-        ],
+      const orders = await this.orderModel.findAll({
         include: [
           {
             model: OrderStatus,
@@ -56,11 +42,10 @@ export class OrdersService {
           {
             model: OrderDetail,
             as: 'orderDetails',
-            attributes: [],
             include: [
               {
                 model: Product,
-                attributes: [],
+                attributes: ['name'],
                 as: 'product'
               }
             ]
@@ -69,22 +54,23 @@ export class OrdersService {
         where: {
           user_id: userId
         },
-        group: [
-          'Order.order_id',
-          'Order.order_date',
-          'Order.total_price',
-          'status.status_id',
-          'status.name',
-          'paymentMethod.payment_method_id',
-          'paymentMethod.name'
-        ],
         order: [['order_date', 'DESC']]
       });
+
+      const result = orders.map(order => ({
+        order_id: order.order_id,
+        order_date: order.order_date,
+        total_price: order.total_price,
+        products_count: order.orderDetails.length,
+        products: order.orderDetails.map(detail => detail.product.name).join(', '),
+        status: order.status.name,
+        payment_method: order.paymentMethod.name
+      }));
 
       this.logger.log(`ВООООООТ ${result.length} заказов для пользователя ${userId} 🛍️`);
       return result;
     } catch (error) {
-      this.logger.error(`что-то пошло не так при поиске заказов пользователя ${userId}:`, error);
+      this.logger.error(`Что-то пошло не так при поиске заказов пользователя ${userId}:`, error);
       throw error;
     }
   }

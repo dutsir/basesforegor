@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { CartItem } from '../models/cart-item.model';
 import { Product } from '../models/product.model';
 import { User } from '../models/user.model';
 import { Sequelize } from 'sequelize';
+import { Op } from 'sequelize';
 
 interface CartTotalResult {
   user_id: number;
@@ -14,6 +15,8 @@ interface CartTotalResult {
 
 @Injectable()
 export class CartService {
+  private readonly logger = new Logger(CartService.name);
+
   constructor(
     @InjectModel(CartItem)
     private cartItemModel: typeof CartItem,
@@ -137,48 +140,83 @@ export class CartService {
     cart_total: number;
     items_count: number;
   }> {
-    const result = await this.userModel.findOne({
-      attributes: [
-        'user_id',
-        'email',
-        [
-          Sequelize.literal('SUM("cartItems"."QUANTITY" * "cartItems->product"."PRICE")'),
-          'cart_total'
-        ],
-        [
-          Sequelize.literal('COUNT("cartItems"."PRODUCT_ID")'),
-          'items_count'
+    try {
+      this.logger.log(`Считаю общую сумму корзины для пользователя ${userId}...`);
+
+      const user = await this.userModel.findByPk(userId, {
+        include: [
+          {
+            model: CartItem,
+            as: 'cartItems',
+            include: [
+              {
+                model: Product,
+                as: 'product'
+              }
+            ]
+          }
         ]
-      ],
-      include: [
-        {
-          model: CartItem,
-          as: 'cartItems',
-          attributes: [],
-          include: [
-            {
-              model: Product,
-              attributes: [],
-            }
-          ]
-        }
-      ],
-      where: {
-        user_id: userId
-      },
-      group: ['User.user_id', 'User.email'],
-      raw: true
-    }) as unknown as CartTotalResult;
+      });
 
-    if (!result) {
-      throw new Error('User not found');
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      const cartTotal = user.cartItems.reduce(
+        (sum, item) => sum + (item.quantity * item.product.price),
+        0
+      );
+
+      return {
+        user_id: user.user_id,
+        email: user.email,
+        cart_total: cartTotal,
+        items_count: user.cartItems.length
+      };
+    } catch (error) {
+      this.logger.error(`Ой, что-то пошло не так при подсчете корзины пользователя ${userId}:`, error);
+      throw error;
     }
+  }
 
-    return {
-      user_id: result.user_id,
-      email: result.email,
-      cart_total: parseFloat(result.cart_total) || 0,
-      items_count: parseInt(result.items_count) || 0
-    };
+  async getCartSummary(userId: number) {
+    try {
+      this.logger.log(`Считаю сумму корзины для пользователя ${userId}...`);
+      
+      const user = await this.userModel.findByPk(userId, {
+        include: [
+          {
+            model: CartItem,
+            as: 'cartItems',
+            include: [{
+              model: Product,
+              as: 'product'
+            }],
+          },
+        ],
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      const cartTotal = user.cartItems.reduce(
+        (sum, item) => sum + item.quantity * item.product.price,
+        0
+      );
+
+      const result = {
+        user_id: user.user_id,
+        email: user.email,
+        cart_total: cartTotal,
+        items_count: user.cartItems.length,
+      };
+
+      this.logger.log(`Готово! Найдена информация о корзине пользователя ${userId} 💰`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Ой, что-то пошло не так при подсчете корзины пользователя ${userId}:`, error);
+      throw error;
+    }
   }
 } 

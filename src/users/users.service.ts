@@ -109,42 +109,19 @@ export class UsersService {
       const yearAgo = new Date();
       yearAgo.setFullYear(yearAgo.getFullYear() - 1);
 
-      const result = await this.userModel.findAll({
-        attributes: [
-          'user_id',
-          [
-            Sequelize.literal('first_name || " " || last_name'),
-            'full_name'
-          ],
-          'email',
-          [
-            Sequelize.literal('COUNT(DISTINCT "orders"."ORDER_ID")'),
-            'total_orders'
-          ],
-          [
-            Sequelize.literal('SUM("orders->orderDetails"."QUANTITY" * "orders->orderDetails"."PRICE_PER_UNIT")'),
-            'total_spent'
-          ],
-          [
-            Sequelize.literal('ROUND(AVG("orders->orderDetails"."QUANTITY" * "orders->orderDetails"."PRICE_PER_UNIT"), 2)'),
-            'avg_order_value'
-          ]
-        ],
+      const users = await this.userModel.findAll({
         include: [
           {
             model: Order,
             as: 'orders',
-            attributes: [],
             include: [
               {
                 model: OrderDetail,
-                as: 'orderDetails',
-                attributes: []
+                as: 'orderDetails'
               },
               {
                 model: OrderStatus,
                 as: 'status',
-                attributes: [],
                 where: {
                   name: 'Delivered'
                 }
@@ -156,17 +133,31 @@ export class UsersService {
               }
             }
           }
-        ],
-        group: ['User.user_id', 'User.first_name', 'User.last_name', 'User.email'],
-        order: [[Sequelize.literal('total_spent'), 'DESC']],
-        limit: 5,
-        subQuery: false
+        ]
       });
 
-      this.logger.log(`ВОт ${result.length} самые щедрые покупатели! 💰`);
-      return result;
+      const result = users.map(user => {
+        const totalSpent = user.orders.reduce((sum, order) => 
+          sum + order.orderDetails.reduce((orderSum, detail) => 
+            orderSum + (detail.quantity * detail.price_per_unit), 0), 0);
+        
+        const totalOrders = user.orders.length;
+        const avgOrderValue = totalOrders > 0 ? totalSpent / totalOrders : 0;
+
+        return {
+          user_id: user.user_id,
+          full_name: `${user.first_name} ${user.last_name}`,
+          email: user.email,
+          total_orders: totalOrders,
+          total_spent: totalSpent,
+          avg_order_value: Math.round(avgOrderValue * 100) / 100
+        };
+      });
+
+      result.sort((a, b) => b.total_spent - a.total_spent);
+      return result.slice(0, 5);
     } catch (error) {
-      this.logger.error('что-то пошло не так при поиске щедрых покупателей:', error);
+      this.logger.error('Что-то пошло не так при поиске топовых покупателей:', error);
       throw error;
     }
   }

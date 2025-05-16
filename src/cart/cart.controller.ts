@@ -76,4 +76,9 @@ export class CartController {
   remove(@Param('id') id: number): Promise<number> {
     return this.cartService.remove(id);
   }
+
+  @Get('summary/:userId')
+  getCartSummary(@Param('userId') userId: string) {
+    return this.cartService.getCartSummary(+userId);
+  }
 } 
