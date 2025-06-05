@@ -1,4 +1,4 @@
-import { Column, DataType, Model, Table, ForeignKey, BelongsTo, HasMany } from 'sequelize-typescript';
+import { Column, DataType, Model, Table, ForeignKey, HasMany } from 'sequelize-typescript';
 import { Category } from './category.model';
 import { CartItem } from './cart-item.model';
 import { OrderDetail } from './order-detail.model';
@@ -51,14 +51,6 @@ export class Product extends Model {
   price: number;
 
   @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    defaultValue: 0,
-    field: 'STOCK_QUANTITY'
-  })
-  stock_quantity: number;
-
-  @Column({
     type: DataType.STRING,
     allowNull: true,
     field: 'IMAGE_URL'
@@ -87,21 +79,21 @@ export class Product extends Model {
   })
   is_available: boolean;
 
-  @BelongsTo(() => Category)
-  category: Category;
-
-  @HasMany(() => CartItem)
-  cartItems: CartItem[];
-
-  @HasMany(() => OrderDetail)
+  @HasMany(() => OrderDetail, {
+    foreignKey: 'product_id',
+    sourceKey: 'product_id'
+  })
   orderDetails: OrderDetail[];
 
-  @HasMany(() => Review)
-  reviews: Review[];
-
-  @HasMany(() => Wishlist)
-  wishlistItems: Wishlist[];
-
-  @HasMany(() => Inventory)
+  @HasMany(() => Inventory, {
+    foreignKey: 'product_id',
+    sourceKey: 'product_id'
+  })
   inventory: Inventory[];
+
+  @HasMany(() => Review, {
+    foreignKey: 'product_id',
+    sourceKey: 'product_id'
+  })
+  reviews: Review[];
 } 

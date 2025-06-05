@@ -55,7 +55,8 @@ export class CartItem extends Model {
   user: User;
 
   @BelongsTo(() => Product, {
-    onDelete: 'CASCADE'
+    foreignKey: 'product_id',
+    targetKey: 'product_id'
   })
   product: Product;
 } 

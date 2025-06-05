@@ -36,7 +36,10 @@ export class Category extends Model {
   })
   parent_category_id: number;
 
-  @HasMany(() => Product)
+  @HasMany(() => Product, {
+    foreignKey: 'category_id',
+    sourceKey: 'category_id'
+  })
   products: Product[];
 
   @BelongsTo(() => Category)

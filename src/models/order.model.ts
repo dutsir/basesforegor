@@ -24,14 +24,6 @@ import { PaymentMethod } from './payment-method.model';
   ]
 })
 export class Order extends Model {
-  @Column({
-    type: DataType.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-    field: 'ORDER_ID'
-  })
-  order_id: number;
-
   @ForeignKey(() => User)
   @Column({
     type: DataType.INTEGER,
@@ -39,14 +31,6 @@ export class Order extends Model {
     field: 'USER_ID'
   })
   user_id: number;
-
-  @Column({
-    type: DataType.DATE,
-    allowNull: false,
-    defaultValue: DataType.NOW,
-    field: 'ORDER_DATE'
-  })
-  order_date: Date;
 
   @ForeignKey(() => OrderStatus)
   @Column({
@@ -71,6 +55,14 @@ export class Order extends Model {
     field: 'SHIPPING_ADDRESS_ID'
   })
   shipping_address_id: number;
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: false,
+    defaultValue: DataType.NOW,
+    field: 'ORDER_DATE'
+  })
+  order_date: Date;
 
   @Column({
     type: DataType.DECIMAL(10, 2),
@@ -114,14 +106,28 @@ export class Order extends Model {
   @BelongsTo(() => Address)
   shippingAddress: Address;
 
-  @BelongsTo(() => OrderStatus)
+  @BelongsTo(() => OrderStatus, {
+    foreignKey: 'status_id',
+    targetKey: 'status_id'
+  })
   status: OrderStatus;
 
-  @BelongsTo(() => PaymentMethod)
+  @BelongsTo(() => PaymentMethod, {
+    foreignKey: 'payment_method_id',
+    targetKey: 'payment_method_id'
+  })
   paymentMethod: PaymentMethod;
 
   @HasMany(() => OrderDetail, {
     onDelete: 'CASCADE'
   })
   orderDetails: OrderDetail[];
+
+  @Column({
+    type: DataType.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+    field: 'ORDER_ID'
+  })
+  order_id: number;
 } 

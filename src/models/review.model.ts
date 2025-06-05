@@ -17,14 +17,6 @@ import { User } from './user.model';
   ]
 })
 export class Review extends Model {
-  @Column({
-    type: DataType.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-    field: 'REVIEW_ID'
-  })
-  review_id: number;
-
   @ForeignKey(() => Product)
   @Column({
     type: DataType.INTEGER,
@@ -68,6 +60,8 @@ export class Review extends Model {
   review_date: Date;
 
   @BelongsTo(() => Product, {
+    foreignKey: 'product_id',
+    targetKey: 'product_id',
     onDelete: 'CASCADE'
   })
   product: Product;

@@ -7,14 +7,6 @@ import { Product } from './product.model';
   timestamps: false
 })
 export class Wishlist extends Model {
-  @Column({
-    type: DataType.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-    field: 'WISHLIST_ID'
-  })
-  wishlist_id: number;
-
   @ForeignKey(() => User)
   @Column({
     type: DataType.INTEGER,

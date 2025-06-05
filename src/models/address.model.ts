@@ -19,14 +19,6 @@ import { User } from './user.model';
   ]
 })
 export class Address extends Model {
-  @Column({
-    type: DataType.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-    field: 'ADDRESS_ID'
-  })
-  address_id: number;
-
   @ForeignKey(() => User)
   @Column({
     type: DataType.INTEGER,

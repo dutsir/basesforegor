@@ -59,6 +59,8 @@ export class Inventory extends Model {
   last_restock_date: Date;
 
   @BelongsTo(() => Product, {
+    foreignKey: 'product_id',
+    targetKey: 'product_id',
     onDelete: 'CASCADE'
   })
   product: Product;

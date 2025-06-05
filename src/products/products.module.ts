@@ -7,6 +7,7 @@ import { OrderDetail } from '../models/order-detail.model';
 import { Order } from '../models/order.model';
 import { Inventory } from '../models/inventory.model';
 import { Warehouse } from '../models/warehouse.model';
+import { Review } from '../models/review.model';
 
 @Module({
   imports: [
@@ -15,7 +16,8 @@ import { Warehouse } from '../models/warehouse.model';
       OrderDetail,
       Order,
       Inventory,
-      Warehouse
+      Warehouse,
+      Review
     ])
   ],
   controllers: [ProductsController],

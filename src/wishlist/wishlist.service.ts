@@ -22,7 +22,7 @@ export class WishlistService {
       this.logger.log('Ищу все избранные товары...');
       const items = await this.wishlistModel.findAll();
       this.logger.log(`вот ${items.length} избранные товары! 💝`);
-      return items;
+      return items.map(item => item.get({ plain: true }));
     } catch (error) {
       this.logger.error(' что-то пошло не так при поиске избранных товаров:', error);
       throw error;
@@ -37,7 +37,7 @@ export class WishlistService {
         this.logger.warn(`Избранный товар с id ${id} не найден 😢`);
         throw new Error('Избранный товар не найден');
       }
-      return item;
+      return item.get({ plain: true });
     } catch (error) {
       this.logger.error(` что-то пошло не так при поиске избранного товара ${id}:`, error);
       throw error;
@@ -48,7 +48,7 @@ export class WishlistService {
     try {
       this.logger.log('Добавляю товар в избранное...');
       const item = await this.wishlistModel.create(wishlistData);
-      this.logger.log(`Ура! Товар добавлен в избранное с id: ${item.wishlist_id} 🎉`);
+      this.logger.log(`Ура! Товар добавлен в избранное с id: ${(item as any).wishlist_id} 🎉`);
       return item;
     } catch (error) {
       this.logger.error('Ой, что-то пошло не так при добавлении товара в избранное:', error);
@@ -87,8 +87,7 @@ export class WishlistService {
           as: 'product'
         }]
       });
-      
-      return items;
+      return items.map(item => item.get({ plain: true }));
     } catch (error) {
       this.logger.error(` что-то пошло не так при поиске избранного пользователя ${userId}:`, error);
       throw error;

@@ -66,10 +66,14 @@ export class OrderDetail extends Model {
   price_per_unit: number;
 
   @BelongsTo(() => Order, {
-    onDelete: 'CASCADE'
+    foreignKey: 'order_id',
+    targetKey: 'order_id'
   })
   order: Order;
 
-  @BelongsTo(() => Product)
+  @BelongsTo(() => Product, {
+    foreignKey: 'product_id',
+    targetKey: 'product_id'
+  })
   product: Product;
 } 

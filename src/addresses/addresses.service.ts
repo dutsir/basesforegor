@@ -45,7 +45,7 @@ export class AddressesService {
     try {
       this.logger.log('Создаю новый адрес...');
       const address = await this.addressModel.create(addressData);
-      this.logger.log(`Ура! Создан адрес с id: ${address.address_id} 🎉`);
+      this.logger.log(`Ура! Создан адрес с id: ${(address as any).address_id} 🎉`);
       return address;
     } catch (error) {
       this.logger.error('Ой, что-то пошло не так при создании адреса:', error);

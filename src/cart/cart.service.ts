@@ -27,9 +27,10 @@ export class CartService {
   ) {}
 
   async findAll(): Promise<CartItem[]> {
-    return this.cartItemModel.findAll({
+    const items = await this.cartItemModel.findAll({
       include: [Product, User],
     });
+    return items.map(item => item.get({ plain: true }));
   }
 
   async findOne(id: number): Promise<CartItem> {
@@ -128,7 +129,7 @@ export class CartService {
       include: [Product],
     });
 
-    const total = cartItems.reduce((sum, item) => sum + (item.quantity * item.product.price), 0);
+    const total = cartItems.reduce((sum, item) => sum + (item.quantity * (item.product as any).price), 0);
     const items_count = cartItems.length;
 
     return { total, items_count };
@@ -163,7 +164,7 @@ export class CartService {
       }
 
       const cartTotal = user.cartItems.reduce(
-        (sum, item) => sum + (item.quantity * item.product.price),
+        (sum, item) => sum + (item.quantity * (item.product as any).price),
         0
       );
 
@@ -201,7 +202,7 @@ export class CartService {
       }
 
       const cartTotal = user.cartItems.reduce(
-        (sum, item) => sum + item.quantity * item.product.price,
+        (sum, item) => sum + item.quantity * (item.product as any).price,
         0
       );
 
@@ -216,6 +217,39 @@ export class CartService {
       return result;
     } catch (error) {
       this.logger.error(`Ой, что-то пошло не так при подсчете корзины пользователя ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  async removeUserProduct(userId: number, productId: number): Promise<number> {
+    try {
+      this.logger.log(`Удаляю товар ${productId} пользователя ${userId} из корзины...`);
+      const result = await this.cartItemModel.destroy({
+        where: {
+          user_id: userId,
+          product_id: productId,
+        },
+      });
+      this.logger.log(`Товар ${productId} пользователя ${userId} удален из корзины 👋`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Что-то пошло не так при удалении товара ${productId} пользователя ${userId} из корзины:`, error);
+      throw error;
+    }
+  }
+
+  async clearUserCart(userId: number): Promise<number> {
+    try {
+      this.logger.log(`Очищаю корзину пользователя ${userId}...`);
+      const result = await this.cartItemModel.destroy({
+        where: {
+          user_id: userId,
+        },
+      });
+      this.logger.log(`Корзина пользователя ${userId} очищена 👋`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Что-то пошло не так при очистке корзины пользователя ${userId}:`, error);
       throw error;
     }
   }

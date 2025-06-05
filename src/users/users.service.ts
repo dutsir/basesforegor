@@ -39,7 +39,7 @@ export class UsersService {
       this.logger.log('Ищу всех пользователей...');
       const users = await this.userModel.findAll();
       this.logger.log(`ВОт ${users.length} пользователи! 💕`);
-      return users;
+      return users.map(user => user.get({ plain: true }));
     } catch (error) {
       this.logger.error('что-то пошло не так при поиске пользователей:', error);
       throw error;
@@ -54,7 +54,7 @@ export class UsersService {
         this.logger.warn(`Пользователь с id ${id} не найден 😢`);
         throw new Error('Пользователь не найден');
       }
-      return user;
+      return user.get({ plain: true });
     } catch (error) {
       this.logger.error(` что-то пошло не так при поиске пользователя ${id}:`, error);
       throw error;
@@ -102,12 +102,12 @@ export class UsersService {
     }
   }
 
-  async getTopSpendingUsers() {
+  async getTopSpendingUsers(months: number = 3): Promise<any[]> {
     try {
-      this.logger.log('Ищу самых щедрых покупателей...');
-
-      const yearAgo = new Date();
-      yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+      
+      
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - months);
 
       const users = await this.userModel.findAll({
         include: [
@@ -129,33 +129,45 @@ export class UsersService {
             ],
             where: {
               order_date: {
-                [Op.gte]: yearAgo
+                [Op.gte]: threeMonthsAgo
               }
             }
           }
         ]
       });
 
+      
+
       const result = users.map(user => {
-        const totalSpent = user.orders.reduce((sum, order) => 
-          sum + order.orderDetails.reduce((orderSum, detail) => 
-            orderSum + (detail.quantity * detail.price_per_unit), 0), 0);
+        const plainUser = user.get({ plain: true });
+        console.log('Plain user:', JSON.stringify(plainUser, null, 2));
+
+   
+        const orders = Array.isArray(plainUser.orders) ? plainUser.orders : [];
         
-        const totalOrders = user.orders.length;
-        const avgOrderValue = totalOrders > 0 ? totalSpent / totalOrders : 0;
+        const totalSpent = orders.reduce((sum, order) => {
+          const orderDetails = Array.isArray(order.orderDetails) ? order.orderDetails : [];
+          return sum + orderDetails.reduce((orderSum, detail) => 
+            orderSum + (detail.quantity * detail.price_per_unit), 0);
+        }, 0);
+
+        const orderCount = orders.length;
 
         return {
-          user_id: user.user_id,
-          full_name: `${user.first_name} ${user.last_name}`,
-          email: user.email,
-          total_orders: totalOrders,
+          user_id: plainUser.user_id,
+          first_name: plainUser.first_name,
+          last_name: plainUser.last_name,
+          email: plainUser.email,
           total_spent: totalSpent,
-          avg_order_value: Math.round(avgOrderValue * 100) / 100
+          order_count: orderCount
         };
-      });
+      })
+      .filter(user => user.total_spent > 0)
+      .sort((a, b) => b.total_spent - a.total_spent)
+      .slice(0, 10);
 
-      result.sort((a, b) => b.total_spent - a.total_spent);
-      return result.slice(0, 5);
+      
+      return result;
     } catch (error) {
       this.logger.error('Что-то пошло не так при поиске топовых покупателей:', error);
       throw error;

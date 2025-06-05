@@ -13,9 +13,10 @@ export class ReviewsService {
   ) {}
 
   async findAll(): Promise<Review[]> {
-    return this.reviewModel.findAll({
+    const reviews = await this.reviewModel.findAll({
       include: [Product, User],
     });
+    return reviews.map(review => review.get({ plain: true }));
   }
 
   async findOne(id: number): Promise<Review> {
